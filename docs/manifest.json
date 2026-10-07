@@ -1,0 +1,4 @@
+{
+  "readme": true,
+  "diagrams": ["docs/architecture.md"]
+}

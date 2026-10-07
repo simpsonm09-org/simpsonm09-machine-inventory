@@ -1,0 +1,26 @@
+{
+  "id": "desktop-primary",
+  "role": "workstation",
+  "storageClass": "storage-ample",
+  "os": {
+    "windows": "Windows 11 26H2",
+    "wsl": "Ubuntu 26.04.1 LTS"
+  },
+  "cpu": {
+    "cores": 24,
+    "threads": 32
+  },
+  "ramTier": "32-63",
+  "gpu": "discrete",
+  "disks": {
+    "hdd": 3,
+    "nvme": 1
+  },
+  "capabilities": {
+    "docker": true,
+    "wsl": true,
+    "gpuCompute": true,
+    "alwaysOn": false
+  },
+  "notes": "Primary Windows workstation for builds and local services."
+}

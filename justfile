@@ -1,0 +1,47 @@
+# Cross-platform task runner for humans and agents. `just --list` shows every
+# recipe. Keep each recipe a thin call to a portable tool or a script under
+# scripts/. See https://github.com/simpsonm09-org/simpsonm09-repo-standard/blob/main/docs/task-runner.md
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+
+# List the recipes.
+default:
+    @just --list
+
+# Install the pinned tools.
+install:
+    mise install
+
+# Run every linter over the tracked files.
+lint:
+    mise exec -- flint run --full
+
+# Fix what the linters can fix.
+lint-fix:
+    mise exec -- flint run --fix
+
+# Run the AI-slop gate.
+aislop:
+    npx --yes aislop@0.16.1 ci
+
+# Run the test suite. `mise run test` holds the repository test command.
+test:
+    mise run test
+
+# Rewrite the README machine table from machines/*.json.
+render:
+    node scripts/render.mjs
+
+# Fail when the README machine table is stale.
+render-check:
+    node scripts/render.mjs --check
+
+# Collect a machine record on Windows.
+collect:
+    mise exec -- pwsh -NoLogo -NoProfile -File scripts/collect.ps1
+
+# Lint and test.
+verify: lint test
+
+# Prune remote-tracking refs and delete local branches merged into main.
+prune:
+    node scripts/prune.mjs

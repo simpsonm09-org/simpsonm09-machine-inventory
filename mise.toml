@@ -1,0 +1,25 @@
+# Pinned tools for the machine inventory. See
+# https://github.com/simpsonm09-org/simpsonm09-repo-standard/blob/main/docs/task-runner.md
+
+[tools]
+
+# Task runner
+"aqua:casey/just" = "1.58.0"
+
+# Linters
+"aqua:grafana/flint" = "0.22.14"
+
+[env]
+FLINT_CONFIG_DIR = ".github/config"
+
+[tasks.lint]
+description = "Run all lints"
+run = "flint run"
+
+[tasks."lint:fix"]
+description = "Auto-fix lint issues"
+run = "flint run --fix"
+
+[tasks.test]
+description = "Validate and test the inventory"
+run = "node scripts/test.mjs"
