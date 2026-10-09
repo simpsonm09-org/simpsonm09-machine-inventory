@@ -102,6 +102,42 @@ check('an extra capabilities key is rejected', () => {
   );
 });
 
+check('a vendor and a VRAM tier on a discrete GPU pass', () => {
+  assert.deepEqual(allErrors({ ...base, gpuVendor: 'nvidia', vramTier: '16-31' }), []);
+});
+
+check('a vramTier outside the tier list is rejected', () => {
+  assert.ok(
+    validateRecord({ ...base, vramTier: '16' }).some((message) => /vramTier/.test(message)),
+    'expected a vramTier error',
+  );
+});
+
+check('a gpuVendor outside the vendor list is rejected', () => {
+  assert.ok(
+    validateRecord({ ...base, gpuVendor: 'Acme' }).some((message) => /gpuVendor/.test(message)),
+    'expected a gpuVendor error',
+  );
+});
+
+check('a VRAM field on a non-discrete GPU is rejected', () => {
+  const integrated = { ...base, gpu: 'integrated', vramTier: '16-31' };
+  assert.ok(
+    validateRecord(integrated).some((message) => /vramTier/.test(message)),
+    'expected a vramTier error',
+  );
+});
+
+check('a serial or hostname in a GPU field is rejected', () => {
+  for (const value of ['SN-0000000001', 'example-host']) {
+    assert.ok(allErrors({ ...base, gpuVendor: value }).length > 0, `expected ${value} to be rejected`);
+  }
+});
+
+check('a drive path in a VRAM field is rejected', () => {
+  assert.ok(allErrors({ ...base, vramTier: 'C:\\Users\\example' }).length > 0, 'expected a path error');
+});
+
 check('duplicate machine ids are rejected', () => {
   const machines = [
     { name: 'a.json', record: { ...base, id: 'same-id' } },
@@ -126,6 +162,12 @@ check('real machine records validate', () => {
     assert.deepEqual(allErrors(record), [], `${name} is invalid`);
   }
   assert.deepEqual(duplicateIdErrors(machines), [], 'duplicate machine ids');
+});
+
+check('desktop-primary records the GPU vendor and VRAM tier', () => {
+  const { record } = loadMachines(DIR).find((machine) => machine.record.id === 'desktop-primary');
+  assert.equal(record.gpuVendor, 'nvidia');
+  assert.equal(record.vramTier, '16-31');
 });
 
 check('README machine table is current', () => {

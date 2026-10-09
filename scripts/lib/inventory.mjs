@@ -3,11 +3,16 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
+// The RAM and VRAM buckets share one convention: whole GiB, rounded to nearest.
+const TIERS = Object.freeze(['<16', '16-31', '32-63', '64-127', '128+']);
+
 export const ENUMS = Object.freeze({
   role: Object.freeze(['workstation', 'server', 'runner']),
   storageClass: Object.freeze(['storage-ample', 'storage-constrained']),
-  ramTier: Object.freeze(['<16', '16-31', '32-63', '64-127', '128+']),
+  ramTier: TIERS,
+  vramTier: TIERS,
   gpu: Object.freeze(['none', 'integrated', 'discrete']),
+  gpuVendor: Object.freeze(['nvidia', 'amd', 'intel']),
   osKey: Object.freeze(['windows', 'linux', 'wsl', 'macos']),
   capability: Object.freeze(['docker', 'wsl', 'gpuCompute', 'alwaysOn']),
   diskClass: Object.freeze(['nvme', 'ssd', 'hdd', 'usb', 'other']),
@@ -16,6 +21,9 @@ export const ENUMS = Object.freeze({
 export const ID_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
 const REQUIRED_FIELDS = ['id', 'role', 'storageClass', 'os', 'cpu', 'ramTier', 'gpu', 'disks', 'capabilities'];
+
+// Optional fields that describe a dedicated GPU. They are allowed only when gpu is discrete.
+const DISCRETE_GPU_FIELDS = ['gpuVendor', 'vramTier'];
 
 // A key whose normalized name matches one of these names an identifying value
 // and is refused wherever it appears in the record.
@@ -130,6 +138,17 @@ export function validateRecord(record) {
   }
   if ('gpu' in record && !ENUMS.gpu.includes(record.gpu)) {
     errors.push(`gpu must be one of ${ENUMS.gpu.join(', ')}`);
+  }
+  if ('gpuVendor' in record && !ENUMS.gpuVendor.includes(record.gpuVendor)) {
+    errors.push(`gpuVendor must be one of ${ENUMS.gpuVendor.join(', ')}`);
+  }
+  if ('vramTier' in record && !ENUMS.vramTier.includes(record.vramTier)) {
+    errors.push(`vramTier must be one of ${ENUMS.vramTier.join(', ')}`);
+  }
+  for (const key of DISCRETE_GPU_FIELDS) {
+    if (key in record && 'gpu' in record && record.gpu !== 'discrete') {
+      errors.push(`${key} is allowed only when gpu is discrete`);
+    }
   }
   if ('os' in record) errors.push(...validateOs(record.os));
   if ('cpu' in record) errors.push(...validateCpu(record.cpu));

@@ -86,14 +86,19 @@ if [ -z "$cores" ]; then
   cores="$threads"
 fi
 
+# The RAM and VRAM buckets share one convention: whole GiB, rounded to nearest.
+tier_for_gb() {
+  if [ "$1" -lt 16 ]; then echo "<16"
+  elif [ "$1" -lt 32 ]; then echo "16-31"
+  elif [ "$1" -lt 64 ]; then echo "32-63"
+  elif [ "$1" -lt 128 ]; then echo "64-127"
+  else echo "128+"
+  fi
+}
+
 ram_kb=$(awk '/^MemTotal:/ { print $2 }' /proc/meminfo 2>/dev/null)
 ram_gb=$(( (${ram_kb:-0} + 524288) / 1024 / 1024 ))
-if [ "$ram_gb" -lt 16 ]; then ram_tier="<16"
-elif [ "$ram_gb" -lt 32 ]; then ram_tier="16-31"
-elif [ "$ram_gb" -lt 64 ]; then ram_tier="32-63"
-elif [ "$ram_gb" -lt 128 ]; then ram_tier="64-127"
-else ram_tier="128+"
-fi
+ram_tier=$(tier_for_gb "$ram_gb")
 
 gpu_class="$gpu"
 if [ -z "$gpu_class" ]; then
@@ -105,6 +110,26 @@ if [ -z "$gpu_class" ]; then
     gpu_class="none"
   fi
 fi
+
+# The vendor and VRAM tier of a discrete GPU come from nvidia-smi only. A field
+# that cannot be read is left out, never guessed.
+gpu_vendor=""
+vram_tier=""
+if [ "$gpu_class" = "discrete" ] && command -v nvidia-smi >/dev/null 2>&1; then
+  vram_mib=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -n 1 | tr -d ' \r')
+  case "$vram_mib" in
+    ""|*[!0-9]*) ;;
+    *)
+      gpu_vendor="nvidia"
+      vram_tier=$(tier_for_gb $(( (vram_mib + 512) / 1024 )))
+      ;;
+  esac
+fi
+gpu_fields=""
+if [ -n "$gpu_vendor" ]; then gpu_fields="$gpu_fields  \"gpuVendor\": \"$gpu_vendor\",
+"; fi
+if [ -n "$vram_tier" ]; then gpu_fields="$gpu_fields  \"vramTier\": \"$(json_escape "$vram_tier")\",
+"; fi
 
 if [ -z "$storage_class" ]; then
   free_kb=$(df -Pk . 2>/dev/null | awk 'NR == 2 { print $4 }')
@@ -166,7 +191,7 @@ json="{
   \"cpu\": { \"cores\": ${cores:-0}, \"threads\": ${threads:-0} },
   \"ramTier\": \"$(json_escape "$ram_tier")\",
   \"gpu\": \"$(json_escape "$gpu_class")\",
-  \"disks\": $disks_json,
+$gpu_fields  \"disks\": $disks_json,
   \"capabilities\": { \"docker\": $docker, \"wsl\": $is_wsl, \"gpuCompute\": $gpu_compute, \"alwaysOn\": $always_on }"
 if [ -n "$notes" ]; then
   json="$json,
