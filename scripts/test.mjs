@@ -3,7 +3,14 @@
 // non-identifying fixtures. One line per case; exits nonzero on any failure.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { duplicateIdErrors, loadMachines, nonIdentifyingErrors, renderTable, validateRecord } from './lib/inventory.mjs';
+import {
+  duplicateIdErrors,
+  loadMachines,
+  nonIdentifyingErrors,
+  renderTable,
+  validateRecord,
+  vramTierForGib,
+} from './lib/inventory.mjs';
 import { MACHINES_END, MACHINES_START, renderReadme } from './render.mjs';
 
 const DIR = 'machines';
@@ -102,6 +109,75 @@ check('an extra capabilities key is rejected', () => {
   );
 });
 
+check('a vendor and a VRAM tier on a discrete GPU pass', () => {
+  assert.deepEqual(allErrors({ ...base, gpuVendor: 'nvidia', vramTier: '16-23' }), []);
+});
+
+check('a vramTier outside the tier list is rejected', () => {
+  assert.ok(
+    validateRecord({ ...base, vramTier: '16' }).some((message) => /vramTier/.test(message)),
+    'expected a vramTier error',
+  );
+});
+
+check('a gpuVendor outside the vendor list is rejected', () => {
+  assert.ok(
+    validateRecord({ ...base, gpuVendor: 'Acme' }).some((message) => /gpuVendor/.test(message)),
+    'expected a gpuVendor error',
+  );
+});
+
+check('a VRAM field on a non-discrete GPU is rejected', () => {
+  const integrated = { ...base, gpu: 'integrated', vramTier: '16-23' };
+  assert.ok(
+    validateRecord(integrated).some((message) => /vramTier/.test(message)),
+    'expected a vramTier error',
+  );
+});
+
+check('VRAM buckets split at 8, 12, 16, 24, and 48 GiB', () => {
+  const expected = [
+    [7, '<8'],
+    [8, '8-11'],
+    [11, '8-11'],
+    [12, '12-15'],
+    [15, '12-15'],
+    [16, '16-23'],
+    [23, '16-23'],
+    [24, '24-47'],
+    [47, '24-47'],
+    [48, '48+'],
+  ];
+  for (const [gib, tier] of expected) {
+    assert.equal(vramTierForGib(gib), tier, `${gib} GiB`);
+  }
+});
+
+check('every whole-GiB VRAM size maps to an allowed vramTier', () => {
+  for (let gib = 0; gib <= 96; gib += 1) {
+    assert.deepEqual(validateRecord({ ...base, vramTier: vramTierForGib(gib) }), [], `${gib} GiB`);
+  }
+});
+
+check('the RAM bucket values are rejected as a vramTier', () => {
+  for (const tier of ['<16', '16-31', '32-63', '64-127', '128+']) {
+    assert.ok(
+      validateRecord({ ...base, vramTier: tier }).some((message) => /vramTier/.test(message)),
+      `expected ${tier} to be rejected`,
+    );
+  }
+});
+
+check('a serial or hostname in a GPU field is rejected', () => {
+  for (const value of ['SN-0000000001', 'example-host']) {
+    assert.ok(allErrors({ ...base, gpuVendor: value }).length > 0, `expected ${value} to be rejected`);
+  }
+});
+
+check('a drive path in a VRAM field is rejected', () => {
+  assert.ok(allErrors({ ...base, vramTier: 'C:\\Users\\example' }).length > 0, 'expected a path error');
+});
+
 check('duplicate machine ids are rejected', () => {
   const machines = [
     { name: 'a.json', record: { ...base, id: 'same-id' } },
@@ -126,6 +202,12 @@ check('real machine records validate', () => {
     assert.deepEqual(allErrors(record), [], `${name} is invalid`);
   }
   assert.deepEqual(duplicateIdErrors(machines), [], 'duplicate machine ids');
+});
+
+check('desktop-primary records the GPU vendor and VRAM tier', () => {
+  const { record } = loadMachines(DIR).find((machine) => machine.record.id === 'desktop-primary');
+  assert.equal(record.gpuVendor, 'nvidia');
+  assert.equal(record.vramTier, '16-23');
 });
 
 check('README machine table is current', () => {

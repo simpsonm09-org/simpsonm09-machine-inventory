@@ -54,6 +54,17 @@ function Get-Cpu {
     }
 }
 
+function Get-VramBucket {
+    param([double] $Gb)
+    $whole = [math]::Round($Gb)
+    if ($whole -lt 8) { return '<8' }
+    if ($whole -lt 12) { return '8-11' }
+    if ($whole -lt 16) { return '12-15' }
+    if ($whole -lt 24) { return '16-23' }
+    if ($whole -lt 48) { return '24-47' }
+    return '48+'
+}
+
 function Get-RamTier {
     try {
         $bytes = [double] (Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop).TotalPhysicalMemory
@@ -68,6 +79,14 @@ function Get-RamTier {
     return '128+'
 }
 
+function Get-VendorName {
+    param([string] $Name)
+    if ($Name -match '(?i)nvidia|geforce|rtx|gtx|quadro') { return 'nvidia' }
+    if ($Name -match '(?i)radeon rx|radeon pro') { return 'amd' }
+    if ($Name -match '(?i)\barc a|\barc b') { return 'intel' }
+    return $null
+}
+
 function Get-GpuClass {
     $names = @()
     try {
@@ -78,9 +97,54 @@ function Get-GpuClass {
     $physical = @($names | Where-Object { $_ -and $_ -notmatch '(?i)microsoft basic|remote display|virtual|indirect' })
     if ($physical.Count -eq 0) { return 'none' }
     $joined = $physical -join ' '
-    if ($joined -match '(?i)nvidia|geforce|rtx|gtx|quadro|radeon rx|radeon pro|\barc a|\barc b') { return 'discrete' }
+    if ($null -ne (Get-VendorName -Name $joined)) { return 'discrete' }
     if ($joined -match '(?i)intel|iris|uhd|hd graphics|vega|radeon graphics|qualcomm|adreno') { return 'integrated' }
     return 'integrated'
+}
+
+# Returns the dedicated memory of the first NVIDIA GPU in MiB, or $null when nvidia-smi is absent or silent.
+function Get-NvidiaMemoryMiB {
+    if (-not (Get-Command nvidia-smi -ErrorAction SilentlyContinue)) { return $null }
+    try {
+        $lines = @(& nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>$null)
+    } catch {
+        return $null
+    }
+    if ($LASTEXITCODE -ne 0) { return $null }
+    foreach ($line in $lines) {
+        $text = "$line".Trim()
+        if ($text -match '^\d+$') { return [double] $text }
+    }
+    return $null
+}
+
+# The vendor and VRAM tier of a discrete GPU. nvidia-smi is read first. Win32_VideoController is the fallback.
+# A field that cannot be read is left out, never guessed.
+function Get-DiscreteGpu {
+    $facts = [ordered]@{}
+    $mib = Get-NvidiaMemoryMiB
+    if ($null -ne $mib) {
+        $facts['gpuVendor'] = 'nvidia'
+        $facts['vramTier'] = Get-VramBucket -Gb ($mib / 1024)
+        return ,$facts
+    }
+    try {
+        $adapters = @(Get-CimInstance -ClassName Win32_VideoController -ErrorAction Stop | Where-Object { $null -ne (Get-VendorName -Name "$($_.Name)") })
+    } catch {
+        return ,$facts
+    }
+    if ($adapters.Count -eq 0) { return ,$facts }
+    $vendor = Get-VendorName -Name "$($adapters[0].Name)"
+    if ($vendor) { $facts['gpuVendor'] = $vendor }
+    # AdapterRAM is a 32-bit field, so a card of 4 GiB or more reads as 4 GiB. Leave the tier out in that case.
+    $largest = 0.0
+    foreach ($adapter in $adapters) {
+        $bytes = [double] $adapter.AdapterRAM
+        if ($bytes -le 0 -or $bytes -ge (4GB - 1MB)) { return ,$facts }
+        $largest = [math]::Max($largest, $bytes)
+    }
+    $facts['vramTier'] = Get-VramBucket -Gb ($largest / 1GB)
+    return ,$facts
 }
 
 function Get-DiskCounts {
@@ -208,6 +272,7 @@ try {
 if ($wslName) { $os['wsl'] = $wslName }
 
 $gpuClass = if ($Gpu) { $Gpu } else { Get-GpuClass }
+$gpuFacts = if ($gpuClass -eq 'discrete') { Get-DiscreteGpu } else { [ordered]@{} }
 $hasDocker = $false
 try { $hasDocker = Test-DockerCapability -WslPresent ([bool] $wslName) } catch { $hasDocker = $false }
 
@@ -229,13 +294,16 @@ $record = [ordered]@{
     cpu          = (Get-Cpu)
     ramTier      = (Get-RamTier)
     gpu          = $gpuClass
-    disks        = $disks
-    capabilities = [ordered]@{
-        docker     = $hasDocker
-        wsl        = ($os.Keys -contains 'wsl')
-        gpuCompute = ($gpuClass -ne 'none')
-        alwaysOn   = [bool] $AlwaysOn
-    }
+}
+foreach ($key in @('gpuVendor', 'vramTier')) {
+    if ($gpuFacts.Contains($key)) { $record[$key] = $gpuFacts[$key] }
+}
+$record['disks'] = $disks
+$record['capabilities'] = [ordered]@{
+    docker     = $hasDocker
+    wsl        = ($os.Keys -contains 'wsl')
+    gpuCompute = ($gpuClass -ne 'none')
+    alwaysOn   = [bool] $AlwaysOn
 }
 if (-not [string]::IsNullOrWhiteSpace($Notes)) { $record['notes'] = $Notes }
 

@@ -31,6 +31,11 @@ from `Win32_Processor`, the RAM tier from `Win32_ComputerSystem` with total
 physical memory rounded to the nearest whole GiB, the GPU class from
 `Win32_VideoController`, disk counts by class from `Get-PhysicalDisk`, and
 the OS from `Win32_OperatingSystem` plus the `DisplayVersion` registry value.
+For a discrete GPU it reads `gpuVendor` and `vramTier` from `nvidia-smi --query-gpu=memory.total`
+(the first GPU, in MiB) when `nvidia-smi` is present. Without it, it falls back to the
+`Win32_VideoController` vendor name and `AdapterRAM`. `AdapterRAM` is a 32-bit field that caps at
+4 GiB, so the collector leaves `vramTier` out when the value is at or near the cap. It never reads
+the GPU product name.
 Disk classes are `nvme`, `ssd`, `hdd`, `usb`, and `other`; a disk on the `USB`
 bus is classed `usb`, so an external drive is not reported as an internal one.
 The OS string drops the edition word (`Home`, `Pro`, `Professional`,
@@ -50,7 +55,9 @@ bash scripts/collect.sh --id wsl-ubuntu --role workstation --write
 It reads the OS from `/etc/os-release`, the CPU from `lscpu` or `nproc`, the RAM
 tier from `/proc/meminfo` with total memory rounded to the nearest whole GiB,
 the GPU class from `/dev/dxg` and `nvidia-smi`, and disk counts by class from
-`lsblk -d -o NAME,ROTA`. Inside WSL these block devices are virtual. It reads no
+`lsblk -d -o NAME,ROTA`. For a discrete GPU it reads `gpuVendor` and `vramTier` from
+`nvidia-smi --query-gpu=memory.total` only, and it omits both when `nvidia-smi` is silent.
+Inside WSL these block devices are virtual. It reads no
 sizes. It sets `capabilities.docker` true when the `docker` CLI is on `PATH`.
 
 The storage class comes from `--storage-class` or `SIMPSONM09_MACHINE_PROFILE`,
