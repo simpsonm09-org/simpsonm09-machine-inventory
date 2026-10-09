@@ -3,14 +3,11 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-// The RAM and VRAM buckets share one convention: whole GiB, rounded to nearest.
-const TIERS = Object.freeze(['<16', '16-31', '32-63', '64-127', '128+']);
-
 export const ENUMS = Object.freeze({
   role: Object.freeze(['workstation', 'server', 'runner']),
   storageClass: Object.freeze(['storage-ample', 'storage-constrained']),
-  ramTier: TIERS,
-  vramTier: TIERS,
+  ramTier: Object.freeze(['<16', '16-31', '32-63', '64-127', '128+']),
+  vramTier: Object.freeze(['<8', '8-11', '12-15', '16-23', '24-47', '48+']),
   gpu: Object.freeze(['none', 'integrated', 'discrete']),
   gpuVendor: Object.freeze(['nvidia', 'amd', 'intel']),
   osKey: Object.freeze(['windows', 'linux', 'wsl', 'macos']),
@@ -19,6 +16,17 @@ export const ENUMS = Object.freeze({
 });
 
 export const ID_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+
+// The VRAM bucket for a whole-GiB size. The collectors round MiB to the nearest
+// GiB and apply the same bounds.
+export function vramTierForGib(gib) {
+  if (gib < 8) return '<8';
+  if (gib < 12) return '8-11';
+  if (gib < 16) return '12-15';
+  if (gib < 24) return '16-23';
+  if (gib < 48) return '24-47';
+  return '48+';
+}
 
 const REQUIRED_FIELDS = ['id', 'role', 'storageClass', 'os', 'cpu', 'ramTier', 'gpu', 'disks', 'capabilities'];
 

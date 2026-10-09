@@ -13,7 +13,7 @@
   "ramTier": "32-63",
   "gpu": "discrete",
   "gpuVendor": "nvidia",
-  "vramTier": "16-31",
+  "vramTier": "16-23",
   "disks": {
     "hdd": 3,
     "nvme": 1

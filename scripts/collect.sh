@@ -86,19 +86,25 @@ if [ -z "$cores" ]; then
   cores="$threads"
 fi
 
-# The RAM and VRAM buckets share one convention: whole GiB, rounded to nearest.
-tier_for_gb() {
-  if [ "$1" -lt 16 ]; then echo "<16"
-  elif [ "$1" -lt 32 ]; then echo "16-31"
-  elif [ "$1" -lt 64 ]; then echo "32-63"
-  elif [ "$1" -lt 128 ]; then echo "64-127"
-  else echo "128+"
+# The VRAM bucket for a whole-GiB size.
+vram_bucket_for_gb() {
+  if [ "$1" -lt 8 ]; then echo "<8"
+  elif [ "$1" -lt 12 ]; then echo "8-11"
+  elif [ "$1" -lt 16 ]; then echo "12-15"
+  elif [ "$1" -lt 24 ]; then echo "16-23"
+  elif [ "$1" -lt 48 ]; then echo "24-47"
+  else echo "48+"
   fi
 }
 
 ram_kb=$(awk '/^MemTotal:/ { print $2 }' /proc/meminfo 2>/dev/null)
 ram_gb=$(( (${ram_kb:-0} + 524288) / 1024 / 1024 ))
-ram_tier=$(tier_for_gb "$ram_gb")
+if [ "$ram_gb" -lt 16 ]; then ram_tier="<16"
+elif [ "$ram_gb" -lt 32 ]; then ram_tier="16-31"
+elif [ "$ram_gb" -lt 64 ]; then ram_tier="32-63"
+elif [ "$ram_gb" -lt 128 ]; then ram_tier="64-127"
+else ram_tier="128+"
+fi
 
 gpu_class="$gpu"
 if [ -z "$gpu_class" ]; then
@@ -121,7 +127,7 @@ if [ "$gpu_class" = "discrete" ] && command -v nvidia-smi >/dev/null 2>&1; then
     ""|*[!0-9]*) ;;
     *)
       gpu_vendor="nvidia"
-      vram_tier=$(tier_for_gb $(( (vram_mib + 512) / 1024 )))
+      vram_tier=$(vram_bucket_for_gb $(( (vram_mib + 512) / 1024 )))
       ;;
   esac
 fi

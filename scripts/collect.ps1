@@ -54,14 +54,15 @@ function Get-Cpu {
     }
 }
 
-function Get-Tier {
+function Get-VramBucket {
     param([double] $Gb)
     $whole = [math]::Round($Gb)
-    if ($whole -lt 16) { return '<16' }
-    if ($whole -lt 32) { return '16-31' }
-    if ($whole -lt 64) { return '32-63' }
-    if ($whole -lt 128) { return '64-127' }
-    return '128+'
+    if ($whole -lt 8) { return '<8' }
+    if ($whole -lt 12) { return '8-11' }
+    if ($whole -lt 16) { return '12-15' }
+    if ($whole -lt 24) { return '16-23' }
+    if ($whole -lt 48) { return '24-47' }
+    return '48+'
 }
 
 function Get-RamTier {
@@ -70,7 +71,12 @@ function Get-RamTier {
     } catch {
         return '<16'
     }
-    return Get-Tier -Gb ($bytes / 1GB)
+    $gb = [math]::Round($bytes / 1GB)
+    if ($gb -lt 16) { return '<16' }
+    if ($gb -lt 32) { return '16-31' }
+    if ($gb -lt 64) { return '32-63' }
+    if ($gb -lt 128) { return '64-127' }
+    return '128+'
 }
 
 function Get-VendorName {
@@ -119,7 +125,7 @@ function Get-DiscreteGpu {
     $mib = Get-NvidiaMemoryMiB
     if ($null -ne $mib) {
         $facts['gpuVendor'] = 'nvidia'
-        $facts['vramTier'] = Get-Tier -Gb ($mib / 1024)
+        $facts['vramTier'] = Get-VramBucket -Gb ($mib / 1024)
         return ,$facts
     }
     try {
@@ -137,7 +143,7 @@ function Get-DiscreteGpu {
         if ($bytes -le 0 -or $bytes -ge (4GB - 1MB)) { return ,$facts }
         $largest = [math]::Max($largest, $bytes)
     }
-    $facts['vramTier'] = Get-Tier -Gb ($largest / 1GB)
+    $facts['vramTier'] = Get-VramBucket -Gb ($largest / 1GB)
     return ,$facts
 }
 

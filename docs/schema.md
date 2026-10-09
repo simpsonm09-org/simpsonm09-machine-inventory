@@ -16,7 +16,7 @@ and the tests share that one module so they agree.
 | `ramTier` | string | One of `<16`, `16-31`, `32-63`, `64-127`, `128+`. Boundaries: below 16 GiB, 16-31 GiB, 32-63 GiB, 64-127 GiB, and 128 GiB or more. Total physical memory is rounded to the nearest whole GiB before bucketing. |
 | `gpu` | string | One of `none`, `integrated`, `discrete`. |
 | `gpuVendor` | string | Optional. One of `nvidia`, `amd`, `intel`. Allowed only when `gpu` is `discrete`, and omitted when the vendor cannot be read. |
-| `vramTier` | string | Optional. One of the `ramTier` buckets, `<16`, `16-31`, `32-63`, `64-127`, `128+`, applied to dedicated video memory. Allowed only when `gpu` is `discrete`. The memory is rounded to the nearest whole GiB before bucketing, and it is omitted when it cannot be read, never guessed. Shared or unified memory is not dedicated and is never reported. |
+| `vramTier` | string | Optional. One of `<8`, `8-11`, `12-15`, `16-23`, `24-47`, `48+`, applied to dedicated video memory. Boundaries: below 8 GiB, 8-11 GiB, 12-15 GiB, 16-23 GiB, 24-47 GiB, and 48 GiB or more. Allowed only when `gpu` is `discrete`. The memory is rounded to the nearest whole GiB before bucketing, and it is omitted when it cannot be read, never guessed. Shared or unified memory is not dedicated and is never reported. |
 | `disks` | object | Integer counts keyed by disk class: `nvme`, `ssd`, `hdd`, `usb`, or `other`, for example `{ "nvme": 1, "hdd": 1 }`. A `USB` bus disk is classed `usb`. At least one key. No sizes. Any other key, such as an exact disk model, is rejected. |
 | `capabilities` | object | All four booleans: `docker`, `wsl`, `gpuCompute`, `alwaysOn`. Exactly these four keys; no other key is allowed. `docker` is true when the machine can run the local container stack: the Windows `docker` CLI exists, or, when a WSL distro is present, `wsl.exe --exec docker --version` exits 0. |
 | `notes` | string | Optional. Non-identifying. |
@@ -36,7 +36,7 @@ and `capabilities`.
   "ramTier": "64-127",
   "gpu": "discrete",
   "gpuVendor": "nvidia",
-  "vramTier": "16-31",
+  "vramTier": "16-23",
   "disks": { "nvme": 1, "hdd": 1 },
   "capabilities": { "docker": true, "wsl": true, "gpuCompute": true, "alwaysOn": false },
   "notes": "Primary Windows workstation."
