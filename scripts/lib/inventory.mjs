@@ -287,7 +287,7 @@ function disksCell(disks) {
 
 function localInferenceCell(capabilities) {
   const inference = capabilities.localInference;
-  if (!inference) return '—';
+  if (!inference) return 'none';
   return [
     `${inference.runtime} ${inference.version}`,
     `CUDA ${inference.cudaVersion}`,

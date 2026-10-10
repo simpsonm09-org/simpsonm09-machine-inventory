@@ -269,6 +269,11 @@ check('a value with a newline stays on one table row', () => {
   assert.equal(body.length, 1, 'expected exactly one table body row');
 });
 
+check('an undeclared inference capability renders as none', () => {
+  const table = renderTable([{ record: base }]);
+  assert.ok(table.includes('| none |'), 'expected a plain empty capability label');
+});
+
 check('local inference details appear in the rendered table', () => {
   const record = { ...base, capabilities: { ...base.capabilities, localInference } };
   const table = renderTable([{ record }]);
