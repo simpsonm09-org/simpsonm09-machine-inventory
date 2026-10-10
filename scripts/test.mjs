@@ -43,6 +43,19 @@ const base = {
   notes: 'Primary Windows workstation.',
 };
 
+const localInference = {
+  runtime: 'llama.cpp',
+  version: 'b11529',
+  cudaVersion: '12.4',
+  modelFamily: 'Qwen3.5-9B',
+  quantization: 'UD-Q4_K_XL',
+  gpuClass: 'RTX 4070 Ti SUPER',
+  vramGb: 16,
+  port: 1234,
+  harness: 'Pi',
+  providerId: 'llama-local',
+};
+
 check('valid record passes', () => {
   assert.deepEqual(allErrors(base), []);
 });
@@ -107,6 +120,67 @@ check('an extra capabilities key is rejected', () => {
     errors.some((message) => /capabilities/.test(message)),
     'expected a capabilities key error',
   );
+});
+
+check('an unknown top-level key is rejected by name', () => {
+  const errors = validateRecord({ ...base, mystery: true });
+  assert.ok(errors.some((message) => message.includes('mystery')), 'expected the unknown key name');
+});
+
+check('a local inference capability passes', () => {
+  assert.deepEqual(validateRecord({ ...base, capabilities: { ...base.capabilities, localInference } }), []);
+});
+
+check('a local inference port must be an integer TCP port', () => {
+  for (const port of [0, 65536, 1234.5, '1234']) {
+    const errors = validateRecord({
+      ...base,
+      capabilities: { ...base.capabilities, localInference: { ...localInference, port } },
+    });
+    assert.ok(errors.some((message) => /port/.test(message)), `expected ${port} to be rejected`);
+  }
+  for (const port of [1, 65535]) {
+    const errors = validateRecord({
+      ...base,
+      capabilities: { ...base.capabilities, localInference: { ...localInference, port } },
+    });
+    assert.ok(!errors.some((message) => /port/.test(message)), `expected ${port} to pass`);
+  }
+});
+
+check('local inference requires all declared fields and rejects unknown keys', () => {
+  for (const key of Object.keys(localInference)) {
+    const missing = { ...localInference };
+    delete missing[key];
+    const missingErrors = validateRecord({
+      ...base,
+      capabilities: { ...base.capabilities, localInference: missing },
+    });
+    assert.ok(missingErrors.some((message) => message.includes(`.${key} is required`)), `expected ${key} requirement`);
+  }
+  const unknownErrors = validateRecord({
+    ...base,
+    capabilities: {
+      ...base.capabilities,
+      localInference: { ...localInference, extra: true },
+    },
+  });
+  assert.ok(unknownErrors.some((message) => /extra/.test(message)), 'expected unknown local inference key');
+});
+
+check('local inference VRAM and text fields must be valid', () => {
+  for (const vramGb of [0, -1, 16.5, '16']) {
+    const errors = validateRecord({
+      ...base,
+      capabilities: { ...base.capabilities, localInference: { ...localInference, vramGb } },
+    });
+    assert.ok(errors.some((message) => /vramGb/.test(message)), `expected ${vramGb} to be rejected`);
+  }
+  const errors = validateRecord({
+    ...base,
+    capabilities: { ...base.capabilities, localInference: { ...localInference, runtime: '' } },
+  });
+  assert.ok(errors.some((message) => /runtime/.test(message)), 'expected empty runtime to be rejected');
 });
 
 check('a vendor and a VRAM tier on a discrete GPU pass', () => {
@@ -193,6 +267,14 @@ check('a value with a newline stays on one table row', () => {
   const record = { ...base, os: { windows: 'Windows\n11' } };
   const body = renderTable([{ record }]).split('\n').slice(2);
   assert.equal(body.length, 1, 'expected exactly one table body row');
+});
+
+check('local inference details appear in the rendered table', () => {
+  const record = { ...base, capabilities: { ...base.capabilities, localInference } };
+  const table = renderTable([{ record }]);
+  for (const value of ['llama.cpp', 'b11529', '12.4', 'Qwen3.5-9B', 'UD-Q4_K_XL', 'RTX 4070 Ti SUPER', '16 GB', '1234', 'Pi', 'llama-local']) {
+    assert.ok(table.includes(value), `expected ${value} in table`);
+  }
 });
 
 check('real machine records validate', () => {

@@ -22,9 +22,9 @@ just verify
 ## Machines
 
 <!-- machines:start -->
-| Machine | Role | Storage | OS | CPU | RAM | GPU | Disks | Always on |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| desktop-primary | workstation | storage-ample | windows Windows 11 26H2; wsl Ubuntu 26.04.1 LTS | 24c/32t | 32-63 | discrete | hdd 3, nvme 1 | no |
+| Machine | Role | Storage | OS | CPU | RAM | GPU | Disks | Always on | Local inference |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| desktop-primary | workstation | storage-ample | windows Windows 11 26H2; wsl Ubuntu 26.04.1 LTS | 24c/32t | 32-63 | discrete | hdd 3, nvme 1 | no | — |
 <!-- machines:end -->
 
 ## Commands
