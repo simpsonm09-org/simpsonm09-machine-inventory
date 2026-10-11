@@ -25,7 +25,7 @@ Required: `id`, `role`, `storageClass`, `os`, `cpu`, `ramTier`, `gpu`, `disks`,
 and `capabilities`.
 
 `capabilities.localInference`, when present, requires non-empty strings for
-`runtime`, `version`, `cudaVersion`, `modelFamily`, `quantization`, `gpuClass`,
+`runtime`, `version`, `cudaVersion`, `modelFamily`, `quantization`,
 `harness`, and `providerId`. It also requires a positive integer `vramGb` and
 an integer `port` from 1 through 65535. The port is a plain number. Any service
 using it must bind to loopback only. The object rejects other keys. Omitting it

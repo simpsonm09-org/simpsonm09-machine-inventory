@@ -38,7 +38,6 @@ const LOCAL_INFERENCE_FIELDS = Object.freeze([
   'cudaVersion',
   'modelFamily',
   'quantization',
-  'gpuClass',
   'vramGb',
   'port',
   'harness',
@@ -292,7 +291,7 @@ function localInferenceCell(capabilities) {
     `${inference.runtime} ${inference.version}`,
     `CUDA ${inference.cudaVersion}`,
     `${inference.modelFamily} ${inference.quantization}`,
-    `${inference.gpuClass} ${inference.vramGb} GB`,
+    `${inference.vramGb} GB VRAM`,
     `loopback:${inference.port}`,
     `${inference.harness}/${inference.providerId}`,
   ].join('; ');

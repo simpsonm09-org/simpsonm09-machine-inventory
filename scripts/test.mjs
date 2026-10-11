@@ -49,7 +49,6 @@ const localInference = {
   cudaVersion: '12.4',
   modelFamily: 'Qwen3.5-9B',
   quantization: 'UD-Q4_K_XL',
-  gpuClass: 'RTX 4070 Ti SUPER',
   vramGb: 16,
   port: 1234,
   harness: 'Pi',
@@ -277,7 +276,7 @@ check('an undeclared inference capability renders as none', () => {
 check('local inference details appear in the rendered table', () => {
   const record = { ...base, capabilities: { ...base.capabilities, localInference } };
   const table = renderTable([{ record }]);
-  for (const value of ['llama.cpp', 'b11529', '12.4', 'Qwen3.5-9B', 'UD-Q4_K_XL', 'RTX 4070 Ti SUPER', '16 GB', '1234', 'Pi', 'llama-local']) {
+  for (const value of ['llama.cpp', 'b11529', '12.4', 'Qwen3.5-9B', 'UD-Q4_K_XL', '16 GB VRAM', '1234', 'Pi', 'llama-local']) {
     assert.ok(table.includes(value), `expected ${value} in table`);
   }
 });
