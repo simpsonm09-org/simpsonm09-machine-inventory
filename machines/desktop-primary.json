@@ -22,7 +22,18 @@
     "docker": true,
     "wsl": true,
     "gpuCompute": true,
-    "alwaysOn": false
+    "alwaysOn": false,
+    "localInference": {
+      "runtime": "llama.cpp",
+      "version": "b11529",
+      "cudaVersion": "12.4",
+      "modelFamily": "Qwen3.5-9B",
+      "quantization": "UD-Q4_K_XL",
+      "vramGb": 16,
+      "port": 18080,
+      "harness": "Pi",
+      "providerId": "llama-local"
+    }
   },
   "notes": "Primary Windows workstation for builds and local services."
 }

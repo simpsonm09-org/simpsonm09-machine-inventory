@@ -18,11 +18,23 @@ and the tests share that one module so they agree.
 | `gpuVendor` | string | Optional. One of `nvidia`, `amd`, `intel`. Allowed only when `gpu` is `discrete`, and omitted when the vendor cannot be read. |
 | `vramTier` | string | Optional. One of `<8`, `8-11`, `12-15`, `16-23`, `24-47`, `48+`, applied to dedicated video memory. Boundaries: below 8 GiB, 8-11 GiB, 12-15 GiB, 16-23 GiB, 24-47 GiB, and 48 GiB or more. Allowed only when `gpu` is `discrete`. The memory is rounded to the nearest whole GiB before bucketing, and it is omitted when it cannot be read, never guessed. Shared or unified memory is not dedicated and is never reported. |
 | `disks` | object | Integer counts keyed by disk class: `nvme`, `ssd`, `hdd`, `usb`, or `other`, for example `{ "nvme": 1, "hdd": 1 }`. A `USB` bus disk is classed `usb`. At least one key. No sizes. Any other key, such as an exact disk model, is rejected. |
-| `capabilities` | object | All four booleans: `docker`, `wsl`, `gpuCompute`, `alwaysOn`. Exactly these four keys; no other key is allowed. `docker` is true when the machine can run the local container stack: the Windows `docker` CLI exists, or, when a WSL distro is present, `wsl.exe --exec docker --version` exits 0. |
+| `capabilities` | object | All four booleans: `docker`, `wsl`, `gpuCompute`, `alwaysOn`. The optional `localInference` object describes a configured local inference service. No other key is allowed. `docker` is true when the machine can run the local container stack: the Windows `docker` CLI exists, or, when a WSL distro is present, `wsl.exe --exec docker --version` exits 0. |
 | `notes` | string | Optional. Non-identifying. |
 
 Required: `id`, `role`, `storageClass`, `os`, `cpu`, `ramTier`, `gpu`, `disks`,
 and `capabilities`.
+
+`capabilities.localInference`, when present, requires non-empty strings for
+`runtime`, `version`, `cudaVersion`, `modelFamily`, `quantization`,
+`harness`, and `providerId`. It also requires a positive integer `vramGb` and
+an integer `port` from 1 through 65535. The port is a plain number. Any service
+using it must bind to loopback only. The object rejects other keys. Omitting it
+means no local inference service is declared. The four capability booleans
+remain required whether or not the object is present.
+
+Top-level keys are limited to the fields in the table, plus optional
+`gpuVendor`, `vramTier`, and `notes`. Any unknown key is rejected and named in
+the validation error.
 
 ## Example
 

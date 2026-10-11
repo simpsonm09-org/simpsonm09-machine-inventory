@@ -22,9 +22,9 @@ just verify
 ## Machines
 
 <!-- machines:start -->
-| Machine | Role | Storage | OS | CPU | RAM | GPU | Disks | Always on |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| desktop-primary | workstation | storage-ample | windows Windows 11 26H2; wsl Ubuntu 26.04.1 LTS | 24c/32t | 32-63 | discrete | hdd 3, nvme 1 | no |
+| Machine | Role | Storage | OS | CPU | RAM | GPU | Disks | Always on | Local inference |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| desktop-primary | workstation | storage-ample | windows Windows 11 26H2; wsl Ubuntu 26.04.1 LTS | 24c/32t | 32-63 | discrete | hdd 3, nvme 1 | no | llama.cpp b11529; CUDA 12.4; Qwen3.5-9B UD-Q4_K_XL; 16 GB VRAM; loopback:18080; Pi/llama-local |
 <!-- machines:end -->
 
 ## Commands

@@ -11,7 +11,7 @@ export const ENUMS = Object.freeze({
   gpu: Object.freeze(['none', 'integrated', 'discrete']),
   gpuVendor: Object.freeze(['nvidia', 'amd', 'intel']),
   osKey: Object.freeze(['windows', 'linux', 'wsl', 'macos']),
-  capability: Object.freeze(['docker', 'wsl', 'gpuCompute', 'alwaysOn']),
+  capability: Object.freeze(['docker', 'wsl', 'gpuCompute', 'alwaysOn', 'localInference']),
   diskClass: Object.freeze(['nvme', 'ssd', 'hdd', 'usb', 'other']),
 });
 
@@ -29,6 +29,20 @@ export function vramTierForGib(gib) {
 }
 
 const REQUIRED_FIELDS = ['id', 'role', 'storageClass', 'os', 'cpu', 'ramTier', 'gpu', 'disks', 'capabilities'];
+
+const ALLOWED_FIELDS = new Set([...REQUIRED_FIELDS, 'gpuVendor', 'vramTier', 'notes']);
+
+const LOCAL_INFERENCE_FIELDS = Object.freeze([
+  'runtime',
+  'version',
+  'cudaVersion',
+  'modelFamily',
+  'quantization',
+  'vramGb',
+  'port',
+  'harness',
+  'providerId',
+]);
 
 // Optional fields that describe a dedicated GPU. They are allowed only when gpu is discrete.
 const DISCRETE_GPU_FIELDS = ['gpuVendor', 'vramTier'];
@@ -120,7 +134,37 @@ function validateCapabilities(capabilities) {
     if (!ENUMS.capability.includes(key)) errors.push(`capabilities has unknown key "${key}"`);
   }
   for (const key of ENUMS.capability) {
-    if (typeof capabilities[key] !== 'boolean') errors.push(`capabilities.${key} must be a boolean`);
+    if (key === 'localInference') {
+      if (key in capabilities) errors.push(...validateLocalInference(capabilities[key]));
+    } else if (typeof capabilities[key] !== 'boolean') {
+      errors.push(`capabilities.${key} must be a boolean`);
+    }
+  }
+  return errors;
+}
+
+function validateLocalInference(value) {
+  const errors = [];
+  if (!isPlainObject(value)) return ['capabilities.localInference must be an object'];
+  for (const key of Object.keys(value)) {
+    if (!LOCAL_INFERENCE_FIELDS.includes(key)) {
+      errors.push(`capabilities.localInference has unknown key "${key}"`);
+    }
+  }
+  for (const key of LOCAL_INFERENCE_FIELDS) {
+    if (!(key in value)) {
+      errors.push(`capabilities.localInference.${key} is required`);
+    } else if (key === 'vramGb') {
+      if (!Number.isInteger(value[key]) || value[key] <= 0) {
+        errors.push('capabilities.localInference.vramGb must be a positive integer');
+      }
+    } else if (key === 'port') {
+      if (!Number.isInteger(value[key]) || value[key] < 1 || value[key] > 65535) {
+        errors.push('capabilities.localInference.port must be an integer from 1 to 65535');
+      }
+    } else if (typeof value[key] !== 'string' || value[key].length === 0) {
+      errors.push(`capabilities.localInference.${key} must be a non-empty string`);
+    }
   }
   return errors;
 }
@@ -129,6 +173,9 @@ function validateCapabilities(capabilities) {
 export function validateRecord(record) {
   if (!isPlainObject(record)) return ['record must be a JSON object'];
   const errors = [];
+  for (const key of Object.keys(record)) {
+    if (!ALLOWED_FIELDS.has(key)) errors.push(`record has unknown key "${key}"`);
+  }
   for (const key of REQUIRED_FIELDS) {
     if (!(key in record)) errors.push(`missing required field "${key}"`);
   }
@@ -237,11 +284,24 @@ function disksCell(disks) {
     .join(', ');
 }
 
+function localInferenceCell(capabilities) {
+  const inference = capabilities.localInference;
+  if (!inference) return 'none';
+  return [
+    `${inference.runtime} ${inference.version}`,
+    `CUDA ${inference.cudaVersion}`,
+    `${inference.modelFamily} ${inference.quantization}`,
+    `${inference.vramGb} GB VRAM`,
+    `loopback:${inference.port}`,
+    `${inference.harness}/${inference.providerId}`,
+  ].join('; ');
+}
+
 // The Markdown table body for the README, sorted by machine id.
 export function renderTable(records) {
   const lines = [
-    '| Machine | Role | Storage | OS | CPU | RAM | GPU | Disks | Always on |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    '| Machine | Role | Storage | OS | CPU | RAM | GPU | Disks | Always on | Local inference |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   ];
   const rows = [...records].sort((a, b) => a.record.id.localeCompare(b.record.id));
   for (const { record } of rows) {
@@ -249,7 +309,7 @@ export function renderTable(records) {
       `| ${escapeCell(record.id)} | ${escapeCell(record.role)} | ${escapeCell(record.storageClass)} | ` +
         `${escapeCell(osCell(record.os))} | ${record.cpu.cores}c/${record.cpu.threads}t | ` +
         `${escapeCell(record.ramTier)} | ${escapeCell(record.gpu)} | ${escapeCell(disksCell(record.disks))} | ` +
-        `${record.capabilities.alwaysOn ? 'yes' : 'no'} |`,
+        `${record.capabilities.alwaysOn ? 'yes' : 'no'} | ${escapeCell(localInferenceCell(record.capabilities))} |`,
     );
   }
   return lines.join('\n');

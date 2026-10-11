@@ -36,6 +36,8 @@ For a discrete GPU it reads `gpuVendor` and `vramTier` from `nvidia-smi --query-
 `Win32_VideoController` vendor name and `AdapterRAM`. `AdapterRAM` is a 32-bit field that caps at
 4 GiB, so the collector leaves `vramTier` out when the value is at or near the cap. It never reads
 the GPU product name.
+
+The collector does not detect `capabilities.localInference`, so `-Write` replaces the record without it. Re-add the declaration by hand after a re-collect, and keep the rest of the record as the collector wrote it.
 Disk classes are `nvme`, `ssd`, `hdd`, `usb`, and `other`; a disk on the `USB`
 bus is classed `usb`, so an external drive is not reported as an internal one.
 The OS string drops the edition word (`Home`, `Pro`, `Professional`,
