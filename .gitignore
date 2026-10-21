@@ -8,3 +8,8 @@ trivy.sarif
 .aislop/agent/
 .DS_Store
 node_modules/
+
+# Local environment (real .env files stay local and are never committed)
+.env
+.env.*
+!.env.example
