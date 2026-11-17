@@ -1,6 +1,6 @@
 # machine-inventory working agreements
 
-The public machine-class inventory for the `simpsonm09-org` fleet. It holds
+The public machine-class inventory for the `simpsonm09-projects` fleet. It holds
 hardware classes, counts, and buckets, never an identifying value.
 
 ## Ground rules
