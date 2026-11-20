@@ -2,7 +2,7 @@
 
 Machine-class inventory for the `simpsonm09-projects` fleet.
 
-This repository lives in `simpsonm09-projects/simpsonm09-machine-inventory`. Work happens on a branch
+This repository lives in `simpsonm09-projects/machine-inventory`. Work happens on a branch
 with a pull request into `main`.
 See [`repo-standard`](https://github.com/simpsonm09-projects/simpsonm09-repo-standard)
 for the branch model and the protection rules.
